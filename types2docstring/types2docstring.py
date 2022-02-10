@@ -23,10 +23,9 @@ def _node_fully_annotated(node: ast.FunctionDef) -> bool:
 
     return True
 
-# TODO: Is this the best way to represent this?
-
 
 class FunctionTypes(NamedTuple):
+    # TODO: Is this the best way to represent this?
     args: list[tuple[str, str]]
     returns: str
 
