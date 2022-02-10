@@ -96,8 +96,15 @@ def _rewrite_file(filename: str) -> int:
                     depth -= 1
                 j += 1
 
-            # TODO: Get the actual (correct) indentation
-            docstring = _generate_docstring(found[token.offset], indent='    ')
+            # Assuming that we are at the end of the function
+            # decleration (see code above), the next INDENT token
+            # should give the indentation level of the function
+            k = j
+            while not tokens[k].name == 'INDENT':
+                k += 1
+
+            indent = tokens[k].src
+            docstring = _generate_docstring(found[token.offset], indent=indent)
             tokens[j] = tokens[j]._replace(src=f':{docstring}')
 
     new_contents = tokens_to_src(tokens)
