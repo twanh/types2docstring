@@ -48,13 +48,14 @@ def _get_args_and_types(node: ast.FunctionDef) -> FunctionTypes:
 # TODO: Add option for docstring type
 def _generate_docstring(fn_types: FunctionTypes, indent='') -> str:
 
+    # XXX: Improve the way this docstring is generated!
     docstring = [
         '', f"{indent or ''}'''",
         f'{indent}[function description]', '\n',
     ]
 
     for arg in fn_types.args:
-        docstring.append(f'{indent}:param {arg[0]}: [{arg[0]} desciption]')
+        docstring.append(f'{indent}:param {arg[0]}: [{arg[0]} description]')
         docstring.append(f'{indent}:type {arg[0]}: {arg[1]}')
 
     docstring.append('\n')
@@ -97,7 +98,7 @@ def _rewrite_file(filename: str) -> int:
                 j += 1
 
             # Assuming that we are at the end of the function
-            # decleration (see code above), the next INDENT token
+            # declaration (see code above), the next INDENT token
             # should give the indentation level of the function
             k = j
             while not tokens[k].name == 'INDENT':
