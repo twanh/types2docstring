@@ -10,6 +10,16 @@ from tokenize_rt import src_to_tokens
 from tokenize_rt import tokens_to_src
 
 
+def _is_method(node: ast.FunctionDef) -> bool:
+
+    if hasattr(node, 'parent'):
+        parent = getattr(node, 'parent')
+        if isinstance(parent, ast.ClassDef):
+            return True
+
+    return False
+
+
 def _node_fully_annotated(node: ast.FunctionDef) -> bool:
 
     # Checks if there is a type specified for the return value.
@@ -19,6 +29,11 @@ def _node_fully_annotated(node: ast.FunctionDef) -> bool:
     # Checks if all arguments are typed
     for child in ast.walk(node):
         if isinstance(child, ast.arg) and child.annotation is None:
+            # Allow self to be untyped for methods
+            # TODO: Also allow `cls` for class methods
+            if child.arg == 'self' and _is_method(node):
+                continue
+
             return False
 
     return True
@@ -26,7 +41,7 @@ def _node_fully_annotated(node: ast.FunctionDef) -> bool:
 
 class FunctionTypes(NamedTuple):
     # TODO: Is this the best way to represent this?
-    args: list[tuple[str, str]]
+    args: list[tuple[str, str | None]]
     returns: str
 
 
@@ -34,13 +49,17 @@ def _get_args_and_types(node: ast.FunctionDef) -> FunctionTypes:
 
     assert isinstance(node.returns, ast.Name)
 
-    arg_annotations = []
+    arg_annotations: list[tuple[str, str | None]] = []
     for child in ast.walk(node):
+
         if isinstance(child, ast.arg):
-            assert child.annotation
-            arg_annotations.append(
-                (child.arg, child.annotation.id),  # type: ignore
-            )
+
+            if _is_method(node) and child.arg == 'self':
+                arg_annotations.append((child.arg, None))
+            else:
+                arg_annotations.append(
+                    (child.arg, child.annotation.id),  # type: ignore
+                )
 
     return FunctionTypes(args=arg_annotations, returns=node.returns.id)
 
@@ -55,8 +74,13 @@ def _generate_docstring(fn_types: FunctionTypes, indent='') -> str:
     ]
 
     for arg in fn_types.args:
-        docstring.append(f'{indent}:param {arg[0]}: [{arg[0]} description]')
-        docstring.append(f'{indent}:type {arg[0]}: {arg[1]}')
+        # Only self is allowed to have no type annotation.
+        # Self is not documented, so it has to be skipped here.
+        if all(arg):
+            docstring.append(
+                f'{indent}:param {arg[0]}: [{arg[0]} description]',
+            )
+            docstring.append(f'{indent}:type {arg[0]}: {arg[1]}')
 
     docstring.append('\n')
     docstring.append(f'{indent}:returns: [return description]')
@@ -77,6 +101,10 @@ def _rewrite_file(filename: str) -> int:
     found: dict[Offset, FunctionTypes] = {}
 
     for node in ast.walk(tree):
+
+        for child in ast.iter_child_nodes(node):
+            setattr(child, 'parent', node)
+
         if (
             isinstance(node, ast.FunctionDef) and
             _node_fully_annotated(node) and
