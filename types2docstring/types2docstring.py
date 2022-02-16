@@ -9,6 +9,8 @@ from tokenize_rt import reversed_enumerate
 from tokenize_rt import src_to_tokens
 from tokenize_rt import tokens_to_src
 
+CLASS_METHOD_VARIABLES = ('self', 'cls')
+
 
 def _is_method(node: ast.FunctionDef) -> bool:
 
@@ -29,9 +31,8 @@ def _node_fully_annotated(node: ast.FunctionDef) -> bool:
     # Checks if all arguments are typed
     for child in ast.walk(node):
         if isinstance(child, ast.arg) and child.annotation is None:
-            # Allow self to be untyped for methods
-            # TODO: Also allow `cls` for class methods
-            if child.arg == 'self' and _is_method(node):
+            # Allows self and cls to be untyped for methods
+            if _is_method(node) and child.arg in CLASS_METHOD_VARIABLES:
                 continue
 
             return False
@@ -40,7 +41,6 @@ def _node_fully_annotated(node: ast.FunctionDef) -> bool:
 
 
 class FunctionTypes(NamedTuple):
-    # TODO: Is this the best way to represent this?
     args: list[tuple[str, str | None]]
     returns: str
 
@@ -54,7 +54,7 @@ def _get_args_and_types(node: ast.FunctionDef) -> FunctionTypes:
 
         if isinstance(child, ast.arg):
 
-            if _is_method(node) and child.arg == 'self':
+            if _is_method(node) and child.arg in CLASS_METHOD_VARIABLES:
                 arg_annotations.append((child.arg, None))
             else:
                 arg_annotations.append(
