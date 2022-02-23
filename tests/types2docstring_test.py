@@ -1,9 +1,11 @@
 import ast
 
 import pytest
+from tokenize_rt import src_to_tokens
 
 from types2docstring.types2docstring import _is_method
 from types2docstring.types2docstring import _node_fully_annotated
+from types2docstring.types2docstring import _subscript_to_annotation
 
 
 def _create_nodes(source):
@@ -15,6 +17,36 @@ def _create_nodes(source):
             setattr(child, 'parent', node)
 
     return tree
+
+
+def test_subscript_to_annotation():
+    source = """\\
+    def t(x: list[set[int]]) -> list[set[Union[int, str]]]:
+        return x
+    """
+    # TODO: Simplify these tests
+    tree = ast.parse(source)
+    tokens = src_to_tokens(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+
+            # Test for the arguments
+            for arg in node.args.args:
+                if hasattr(arg, 'annotation'):
+                    if isinstance(getattr(arg, 'annotation'), ast.Subscript):
+                        a = _subscript_to_annotation(
+                            getattr(arg, 'annotation'), tokens,
+                        )
+                        assert a == 'list[set[int]]'
+                else:
+                    assert False
+
+            # Test the return annotation
+            if isinstance(node.returns, ast.Subscript):
+                a = _subscript_to_annotation(node.returns, tokens)
+                assert a == 'list[set[Union[int, str]]]'
+            else:
+                assert False
 
 
 def test_is_method_no_parent_attr():

@@ -7,9 +7,37 @@ from typing import NamedTuple
 from tokenize_rt import Offset
 from tokenize_rt import reversed_enumerate
 from tokenize_rt import src_to_tokens
+from tokenize_rt import Token
 from tokenize_rt import tokens_to_src
 
 CLASS_METHOD_VARIABLES = ('self', 'cls')
+
+
+def _subscript_to_annotation(node: ast.Subscript, tokens: list[Token]) -> str:
+
+    node_offset = Offset(node.lineno, node.col_offset)
+    annotation = ''
+
+    for i, token in enumerate(tokens):
+        # TODO: Document this code really well since its quite complicated
+        if token.offset == node_offset:
+
+            depth = 0
+            j = i
+            # depth indicates wether we are in a type annotation
+            # when reacing ',' and depth == 0, it means that
+            # the end of the type annotation is reached and a new
+            # argument begins when reacing ')' the arguments are done.
+            # : is for return types.
+            while depth or tokens[j].src not in ',):':
+                if tokens[j].src in '[':
+                    depth += 1
+                elif tokens[j].src in ']':
+                    depth -= 1
+                annotation += tokens[j].src
+                j += 1
+
+    return annotation
 
 
 def _is_method(node: ast.FunctionDef) -> bool:
