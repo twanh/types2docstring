@@ -53,7 +53,10 @@ def _is_method(node: ast.FunctionDef) -> bool:
 def _node_fully_annotated(node: ast.FunctionDef) -> bool:
 
     # Checks if there is a type specified for the return value.
-    if not isinstance(node.returns, ast.Name):
+    if not (
+            isinstance(node.returns, ast.Name) or
+            isinstance(node.returns, ast.Subscript)
+    ):
         return False
 
     # Checks if all arguments are typed
