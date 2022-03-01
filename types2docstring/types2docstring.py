@@ -13,22 +13,27 @@ from tokenize_rt import tokens_to_src
 CLASS_METHOD_VARIABLES = ('self', 'cls')
 
 
+class FunctionTypes(NamedTuple):
+    args: list[tuple[str, str | None]]
+    returns: str
+
+
 def _subscript_to_annotation(node: ast.Subscript, tokens: list[Token]) -> str:
 
     node_offset = Offset(node.lineno, node.col_offset)
     annotation = ''
 
     for i, token in enumerate(tokens):
-        # TODO: Document this code really well since its quite complicated
         if token.offset == node_offset:
-
             depth = 0
             j = i
-            # depth indicates wether we are in a type annotation
-            # when reacing ',' and depth == 0, it means that
-            # the end of the type annotation is reached and a new
-            # argument begins when reacing ')' the arguments are done.
-            # : is for return types.
+            # depth indicates wether we are in a type annotation.
+            # When reaching ',' and depth == 0, it means that
+            # the end of the type annotation is reached.
+            # The `)`indicates that the end of the parameters declaration
+            # is reached.
+            # `:` is for return types and means that the end of the
+            # function declaration is reached.
             while depth or tokens[j].src not in ',):':
                 if tokens[j].src in '[':
                     depth += 1
@@ -59,11 +64,9 @@ def _is_return_annotated(node: ast.FunctionDef) -> bool:
 
 def _node_fully_annotated(node: ast.FunctionDef) -> bool:
 
-    # Checks if there is a type specified for the return value.
     if not _is_return_annotated(node):
         return False
 
-    # Checks if all arguments are typed
     for child in ast.walk(node):
         if isinstance(child, ast.arg) and child.annotation is None:
             # Allows self and cls to be untyped for methods
@@ -73,11 +76,6 @@ def _node_fully_annotated(node: ast.FunctionDef) -> bool:
             return False
 
     return True
-
-
-class FunctionTypes(NamedTuple):
-    args: list[tuple[str, str | None]]
-    returns: str
 
 
 def _get_args_and_types(
@@ -91,8 +89,8 @@ def _get_args_and_types(
     for child in ast.walk(node):
 
         if isinstance(child, ast.arg):
-
             if _is_method(node) and child.arg in CLASS_METHOD_VARIABLES:
+                # `self` and `cls` are not typed..
                 arg_annotations.append((child.arg, None))
             elif isinstance(child.annotation, ast.Subscript):
                 arg_annotations.append(
@@ -105,20 +103,22 @@ def _get_args_and_types(
                     ),
                 )
             else:
+                assert child.annotation is not None
+                assert hasattr(child.annotation, 'id')
                 arg_annotations.append(
-                    (child.arg, child.annotation.id),  # type: ignore
+                    (child.arg, getattr(child.annotation, 'id')),
                 )
 
+    return_type = ''
     if isinstance(node.returns, ast.Subscript):
-        return FunctionTypes(
-            args=arg_annotations,
-            returns=_subscript_to_annotation(node.returns, tokens),
-        )
+        return_type = _subscript_to_annotation(node.returns, tokens)
+    else:
+        assert node.returns is not None and hasattr(node.returns, 'id')
+        return_type = getattr(node.returns, 'id')
 
-    assert node.returns is not None and hasattr(node.returns, 'id')
     return FunctionTypes(
         args=arg_annotations,
-        returns=getattr(node.returns, 'id'),
+        returns=return_type,
     )
 
 
