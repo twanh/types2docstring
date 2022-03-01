@@ -50,13 +50,17 @@ def _is_method(node: ast.FunctionDef) -> bool:
     return False
 
 
+def _is_return_annotated(node: ast.FunctionDef) -> bool:
+    return (
+        isinstance(node.returns, ast.Name) or
+        isinstance(node.returns, ast.Subscript)
+    )
+
+
 def _node_fully_annotated(node: ast.FunctionDef) -> bool:
 
     # Checks if there is a type specified for the return value.
-    if not (
-            isinstance(node.returns, ast.Name) or
-            isinstance(node.returns, ast.Subscript)
-    ):
+    if not _is_return_annotated(node):
         return False
 
     # Checks if all arguments are typed
@@ -76,9 +80,12 @@ class FunctionTypes(NamedTuple):
     returns: str
 
 
-def _get_args_and_types(node: ast.FunctionDef) -> FunctionTypes:
+def _get_args_and_types(
+    node: ast.FunctionDef,
+    tokens: list[Token],
+) -> FunctionTypes:
 
-    assert isinstance(node.returns, ast.Name)
+    assert _is_return_annotated(node)
 
     arg_annotations: list[tuple[str, str | None]] = []
     for child in ast.walk(node):
@@ -87,12 +94,32 @@ def _get_args_and_types(node: ast.FunctionDef) -> FunctionTypes:
 
             if _is_method(node) and child.arg in CLASS_METHOD_VARIABLES:
                 arg_annotations.append((child.arg, None))
+            elif isinstance(child.annotation, ast.Subscript):
+                arg_annotations.append(
+                    (
+                        child.arg,
+                        _subscript_to_annotation(
+                            child.annotation,
+                            tokens,
+                        ),
+                    ),
+                )
             else:
                 arg_annotations.append(
                     (child.arg, child.annotation.id),  # type: ignore
                 )
 
-    return FunctionTypes(args=arg_annotations, returns=node.returns.id)
+    if isinstance(node.returns, ast.Subscript):
+        return FunctionTypes(
+            args=arg_annotations,
+            returns=_subscript_to_annotation(node.returns, tokens),
+        )
+
+    assert node.returns is not None and hasattr(node.returns, 'id')
+    return FunctionTypes(
+        args=arg_annotations,
+        returns=getattr(node.returns, 'id'),
+    )
 
 
 # TODO: Add option for docstring type
@@ -128,6 +155,7 @@ def _rewrite_file(filename: str) -> int:
         contents = file.read()
 
     tree = ast.parse(contents)
+    tokens = src_to_tokens(contents)
 
     found: dict[Offset, FunctionTypes] = {}
 
@@ -141,10 +169,9 @@ def _rewrite_file(filename: str) -> int:
             _node_fully_annotated(node) and
             ast.get_docstring(node) is None
         ):
-            ft = _get_args_and_types(node)
+            ft = _get_args_and_types(node, tokens)
             found[Offset(node.lineno, node.col_offset)] = ft
 
-    tokens = src_to_tokens(contents)
     for i, token in reversed_enumerate(tokens):
         if token.src and token.offset in found:
             depth = 0
