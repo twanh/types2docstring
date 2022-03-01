@@ -3,6 +3,7 @@ import ast
 import pytest
 from tokenize_rt import src_to_tokens
 
+from types2docstring.types2docstring import _generate_docstring
 from types2docstring.types2docstring import _get_args_and_types
 from types2docstring.types2docstring import _is_method
 from types2docstring.types2docstring import _node_fully_annotated
@@ -220,3 +221,55 @@ def test_get_args_and_types(source, expected):
         if isinstance(child, ast.FunctionDef):
             types = _get_args_and_types(child, tokens)
             assert types == expected
+
+
+@pytest.mark.parametrize(
+    'fn_types, expected', [
+        (
+            FunctionTypes([('x', 'int')], 'int'),
+            "\n'''\n"
+            '[function description]\n'
+            '\n'
+            '\n:param x: [x description]\n'
+            ':type x: int\n'
+            '\n'
+            '\n:returns: [return description]\n'
+            ':rtype: int\n'
+            "'''\n",
+        ),
+        (
+            FunctionTypes([('x', 'list[list[int]]')], 'int'),
+            "\n'''\n"
+            '[function description]\n'
+            '\n'
+            '\n:param x: [x description]\n'
+            ':type x: list[list[int]]\n'
+            '\n'
+            '\n:returns: [return description]\n'
+            ':rtype: int\n'
+            "'''\n",
+        ),
+        (
+            FunctionTypes(
+                [
+                    ('x', 'tuple[int, int, str]'),
+                    ('y', 'Union[set[str], int]'),
+                ], 'int',
+            ),
+            "\n'''\n"
+            '[function description]\n'
+            '\n'
+            '\n:param x: [x description]\n'
+            ':type x: tuple[int, int, str]\n'
+            ':param y: [y description]\n'
+            ':type y: Union[set[str], int]\n'
+            '\n'
+            '\n:returns: [return description]\n'
+            ':rtype: int\n'
+            "'''\n",
+        ),
+    ],
+)
+def test_generate_docstring(fn_types, expected):
+
+    assert _generate_docstring(fn_types) == expected
