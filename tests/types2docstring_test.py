@@ -3,9 +3,11 @@ import ast
 import pytest
 from tokenize_rt import src_to_tokens
 
+from types2docstring.types2docstring import _get_args_and_types
 from types2docstring.types2docstring import _is_method
 from types2docstring.types2docstring import _node_fully_annotated
 from types2docstring.types2docstring import _subscript_to_annotation
+from types2docstring.types2docstring import FunctionTypes
 
 
 def _create_nodes(source):
@@ -38,14 +40,14 @@ def test_subscript_to_annotation():
                             getattr(arg, 'annotation'), tokens,
                         )
                         assert a == 'list[set[int]]'
-                else:
+                else:  # pragma: nocover
                     assert False
 
             # Test the return annotation
             if isinstance(node.returns, ast.Subscript):
                 a = _subscript_to_annotation(node.returns, tokens)
                 assert a == 'list[set[Union[int, str]]]'
-            else:
+            else:  # pragma: nocover
                 assert False
 
 
@@ -175,3 +177,46 @@ def test_node_fully_annotated_methods(source, expected):
     for node in ast.walk(nodes):
         if isinstance(node, ast.FunctionDef):
             assert _node_fully_annotated(node) is expected
+
+
+@pytest.mark.parametrize(
+    'source, expected', [
+        (
+            'class C:\n'
+            '   def t(self, x: int) -> int:\n'
+            '       return x\n',
+            FunctionTypes([('self', None), ('x', 'int')], 'int'),
+        ),
+        (
+            'class C:\n'
+            '   @classmethod\n'
+            '   def t(cls, x:int) -> int:\n'
+            '       return x\n',
+            FunctionTypes([('cls', None), ('x', 'int')], 'int'),
+        ),
+        (
+            'def f(x: list[set[int]]) -> list[list[int]]:\n'
+            '   return x\n',
+            FunctionTypes([('x', 'list[set[int]]')], 'list[list[int]]'),
+        ),
+        (
+            'def f(x: Optional[str] = None) -> str:\n'
+            '   return x\n',
+            FunctionTypes([('x', 'Optional[str]')], 'str'),
+        ),
+        (
+            'def f(x: str | None = None) -> str:\n'
+            '   return x\n',
+            FunctionTypes([('x', 'str | None')], 'str'),
+        ),
+    ],
+)
+def test_get_args_and_types(source, expected):
+
+    node = _create_nodes(source)
+    tokens = src_to_tokens(source)
+
+    for child in ast.walk(node):
+        if isinstance(child, ast.FunctionDef):
+            types = _get_args_and_types(child, tokens)
+            assert types == expected
