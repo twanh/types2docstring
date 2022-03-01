@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import ast
 from typing import NamedTuple
+from typing import Optional
+from typing import Sequence
 from typing import Union
 
 from tokenize_rt import Offset
@@ -215,11 +217,11 @@ def _rewrite_file(filename: str) -> int:
     return new_contents != contents
 
 
-def _main() -> int:
+def _main(argv: Optional[Sequence[str]] = None) -> int:
 
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='*')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     ret = 0
 

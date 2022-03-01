@@ -1,14 +1,19 @@
 import ast
 
 import pytest
+from py.path import local as Path
 from tokenize_rt import src_to_tokens
 
 from types2docstring.types2docstring import _generate_docstring
 from types2docstring.types2docstring import _get_args_and_types
 from types2docstring.types2docstring import _is_method
+from types2docstring.types2docstring import _main
 from types2docstring.types2docstring import _node_fully_annotated
 from types2docstring.types2docstring import _node_to_annotation
 from types2docstring.types2docstring import FunctionTypes
+
+# TODO:
+# - test: `_is_return_annotated`
 
 
 def _create_nodes(source):
@@ -273,3 +278,30 @@ def test_get_args_and_types(source, expected):
 def test_generate_docstring(fn_types, expected):
 
     assert _generate_docstring(fn_types) == expected
+
+
+def test_main(tmpdir: Path):
+
+    test_file = tmpdir.join('test.py')
+    test_file.write(
+        'def f(x: int) -> int:\n'
+        '   return x',
+    )
+
+    # Test the exit code
+    assert _main([str(test_file)]) == 1
+
+    # Test the writing of the file.
+    content = test_file.read()
+    expected_content = (
+        'def f(x: int) -> int:\n'
+        "   '''\n"
+        '   [function description]\n\n\n'
+        '   :param x: [x description]\n'
+        '   :type x: int\n\n\n'
+        '   :returns: [return description]\n'
+        '   :rtype: int\n'
+        "   '''\n\n"
+        '   return x'
+    )
+    assert content == expected_content
