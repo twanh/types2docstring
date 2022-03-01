@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import ast
 from typing import NamedTuple
+from typing import Union
 
 from tokenize_rt import Offset
 from tokenize_rt import reversed_enumerate
@@ -18,7 +19,10 @@ class FunctionTypes(NamedTuple):
     returns: str
 
 
-def _subscript_to_annotation(node: ast.Subscript, tokens: list[Token]) -> str:
+def _node_to_annotation(
+    node: Union[ast.Subscript, ast.BinOp],
+    tokens: list[Token],
+) -> str:
 
     node_offset = Offset(node.lineno, node.col_offset)
     annotation = ''
@@ -34,7 +38,9 @@ def _subscript_to_annotation(node: ast.Subscript, tokens: list[Token]) -> str:
             # is reached.
             # `:` is for return types and means that the end of the
             # function declaration is reached.
-            while depth or tokens[j].src not in ',):':
+            # `=` means that there is a default argument, so after the
+            # equal there is no type annotation.
+            while depth or tokens[j].src not in ',):=':
                 if tokens[j].src in '[':
                     depth += 1
                 elif tokens[j].src in ']':
@@ -42,7 +48,10 @@ def _subscript_to_annotation(node: ast.Subscript, tokens: list[Token]) -> str:
                 annotation += tokens[j].src
                 j += 1
 
-    return annotation
+    # The annotation sometimes may include trailing whitespace
+    # it is easier to remove it here then change how the
+    # annotation is parsed.
+    return annotation.strip()
 
 
 def _is_method(node: ast.FunctionDef) -> bool:
@@ -92,26 +101,31 @@ def _get_args_and_types(
             if _is_method(node) and child.arg in CLASS_METHOD_VARIABLES:
                 # `self` and `cls` are not typed..
                 arg_annotations.append((child.arg, None))
-            elif isinstance(child.annotation, ast.Subscript):
+            elif (
+                isinstance(child.annotation, ast.Subscript) or
+                isinstance(child.annotation, ast.BinOp)
+            ):
                 arg_annotations.append(
                     (
                         child.arg,
-                        _subscript_to_annotation(
+                        _node_to_annotation(
                             child.annotation,
                             tokens,
                         ),
                     ),
                 )
             else:
-                assert child.annotation is not None
-                assert hasattr(child.annotation, 'id')
+                assert child.annotation is not None, (
+                    'annotation cannot be None'
+                )
+                assert hasattr(child.annotation, 'id'), 'annotation needs id'
                 arg_annotations.append(
                     (child.arg, getattr(child.annotation, 'id')),
                 )
 
     return_type = ''
     if isinstance(node.returns, ast.Subscript):
-        return_type = _subscript_to_annotation(node.returns, tokens)
+        return_type = _node_to_annotation(node.returns, tokens)
     else:
         assert node.returns is not None and hasattr(node.returns, 'id')
         return_type = getattr(node.returns, 'id')

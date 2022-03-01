@@ -6,7 +6,7 @@ from tokenize_rt import src_to_tokens
 from types2docstring.types2docstring import _get_args_and_types
 from types2docstring.types2docstring import _is_method
 from types2docstring.types2docstring import _node_fully_annotated
-from types2docstring.types2docstring import _subscript_to_annotation
+from types2docstring.types2docstring import _node_to_annotation
 from types2docstring.types2docstring import FunctionTypes
 
 
@@ -21,7 +21,7 @@ def _create_nodes(source):
     return tree
 
 
-def test_subscript_to_annotation():
+def test_node_to_annotation():
     source = """\\
     def t(x: list[set[int]]) -> list[set[Union[int, str]]]:
         return x
@@ -36,7 +36,7 @@ def test_subscript_to_annotation():
             for arg in node.args.args:
                 if hasattr(arg, 'annotation'):
                     if isinstance(getattr(arg, 'annotation'), ast.Subscript):
-                        a = _subscript_to_annotation(
+                        a = _node_to_annotation(
                             getattr(arg, 'annotation'), tokens,
                         )
                         assert a == 'list[set[int]]'
@@ -45,7 +45,7 @@ def test_subscript_to_annotation():
 
             # Test the return annotation
             if isinstance(node.returns, ast.Subscript):
-                a = _subscript_to_annotation(node.returns, tokens)
+                a = _node_to_annotation(node.returns, tokens)
                 assert a == 'list[set[Union[int, str]]]'
             else:  # pragma: nocover
                 assert False
