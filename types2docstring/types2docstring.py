@@ -143,7 +143,7 @@ def _generate_docstring(fn_types: FunctionTypes, indent='') -> str:
 
     # XXX: Improve the way this docstring is generated!
     docstring = [
-        '', f"{indent or ''}'''",
+        '', f"{indent}'''",
         f'{indent}[function description]', '\n',
     ]
 
@@ -160,7 +160,7 @@ def _generate_docstring(fn_types: FunctionTypes, indent='') -> str:
     docstring.append(f'{indent}:returns: [return description]')
     docstring.append(f'{indent}:rtype: {fn_types.returns}')
 
-    docstring.append(f"{indent or ''}'''\n")
+    docstring.append(f"{indent}'''\n")
 
     return '\n'.join(docstring)
 
