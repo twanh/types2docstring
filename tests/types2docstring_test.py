@@ -28,10 +28,7 @@ def _create_nodes(source):
 
 
 def test_node_to_annotation():
-    source = """\\
-    def t(x: list[set[int]]) -> list[set[Union[int, str]]]:
-        return x
-    """
+    source = "def t(x: list[set[int]]) -> list[set[Union[int, str]]]:\n\treturn x"
     # TODO: Simplify these tests
     tree = ast.parse(source)
     tokens = src_to_tokens(source)
@@ -82,14 +79,13 @@ def test_is_method_with_parent_no_method():
 
 def test_is_method():
 
-    source = """\\
-    class C:
-        def test(self, x: int) -> int:
-            return x*x
+    source = """class C:
+    def test(self, x: int) -> int:
+        return x*x
 
-        @classmethod
-        def test2(cls, x:int) -> int:
-            return x*x
+    @classmethod
+    def test2(cls, x:int) -> int:
+        return x*x
     """
 
     tree = ast.parse(source)
