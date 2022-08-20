@@ -1,7 +1,6 @@
 import pkgutil
 from typing import Callable
 from typing import NamedTuple
-from typing import Optional
 
 from types2docstring import _docstrings
 
@@ -11,7 +10,7 @@ class FunctionTypes(NamedTuple):
     returns: str
 
 
-DOCSTRING_FUNC = Callable[[FunctionTypes, Optional[str]], str]
+DOCSTRING_FUNC = Callable[[FunctionTypes, str], str]
 
 DOCSTRING_TYPES: dict[str, DOCSTRING_FUNC] = {}
 
