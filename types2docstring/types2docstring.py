@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Union
@@ -13,12 +12,9 @@ from tokenize_rt import src_to_tokens
 from tokenize_rt import Token
 from tokenize_rt import tokens_to_src
 
+from types2docstring._helpers import FunctionTypes
+
 CLASS_METHOD_VARIABLES = ('self', 'cls')
-
-
-class FunctionTypes(NamedTuple):
-    args: list[tuple[str, str | None]]
-    returns: str
 
 
 def _node_to_annotation(
