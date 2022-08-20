@@ -28,7 +28,7 @@ def _create_nodes(source):
 
 
 def test_node_to_annotation():
-    source = "def t(x: list[set[int]]) -> list[set[Union[int, str]]]:\n\treturn x"
+    source = 'def t(x: list[set[int]]) -> list[set[Union[int, str]]]:\n\treturn x'  # noqa: E501
     # TODO: Simplify these tests
     tree = ast.parse(source)
     tokens = src_to_tokens(source)
