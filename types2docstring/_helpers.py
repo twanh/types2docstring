@@ -1,6 +1,7 @@
 import pkgutil
 from typing import Callable
 from typing import NamedTuple
+from typing import Optional
 
 from types2docstring import _docstrings
 
@@ -10,16 +11,17 @@ class FunctionTypes(NamedTuple):
     returns: str
 
 
-DOCSTRING_FUNC = Callable[[FunctionTypes, str], str]
+DOCSTRING_FUNC = Callable[[FunctionTypes, Optional[str]], str]
 
-DOCSTRING_TYPES: list[tuple[str, DOCSTRING_FUNC]] = []
+DOCSTRING_TYPES: dict[str, DOCSTRING_FUNC] = {}
 
 
 def register_docstring(
     name: str,
 ) -> Callable[[DOCSTRING_FUNC], DOCSTRING_FUNC]:
     def register_docstring_decorator(func: DOCSTRING_FUNC) -> DOCSTRING_FUNC:
-        DOCSTRING_TYPES.append((name, func))
+        # TODO: Make sure the name is not used yet?
+        DOCSTRING_TYPES[name] = func
         return func
     return register_docstring_decorator
 
