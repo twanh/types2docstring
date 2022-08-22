@@ -1,5 +1,6 @@
 import pytest
 
+from types2docstring._docstrings._google import generate_google_docstring
 from types2docstring._docstrings._rst import generate_rst_docstring
 from types2docstring._helpers import FunctionTypes
 
@@ -54,5 +55,27 @@ from types2docstring._helpers import FunctionTypes
     ],
 )
 def test_generate_rst_docstring(fn_types, expected):
+    assert generate_rst_docstring(fn_types, '') == expected
 
-    assert generate_rst_docstring(fn_types) == expected
+
+# Google docstring tests
+
+@pytest.mark.parametrize(
+    'fn_types, expected', [
+        (
+            FunctionTypes([('x', 'int')], 'int'),
+            "\n'''"
+            '[function description]\n'
+            '\n'
+            'Args:'
+            '\n\tx (int): [argument description]'
+            '\n'
+            '\nReturns:'
+            '\n\tint: [return description]'
+            '\n'
+            "'''\n",
+        ),
+    ],
+)
+def test_generate_google_docstring(fn_types, expected):
+    assert generate_google_docstring(fn_types, '') == expected
