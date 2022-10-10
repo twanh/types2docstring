@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Union
@@ -13,12 +12,10 @@ from tokenize_rt import src_to_tokens
 from tokenize_rt import Token
 from tokenize_rt import tokens_to_src
 
+from types2docstring._helpers import DOCSTRING_TYPES
+from types2docstring._helpers import FunctionTypes
+
 CLASS_METHOD_VARIABLES = ('self', 'cls')
-
-
-class FunctionTypes(NamedTuple):
-    args: list[tuple[str, str | None]]
-    returns: str
 
 
 def _node_to_annotation(
@@ -138,34 +135,23 @@ def _get_args_and_types(
     )
 
 
-# TODO: Add option for docstring type
-def _generate_docstring(fn_types: FunctionTypes, indent='') -> str:
+def _generate_docstring(
+    docstring_type: str,
+    fn_types: FunctionTypes,
+    indent='',
+) -> str:
 
-    # XXX: Improve the way this docstring is generated!
-    docstring = [
-        '', f"{indent}'''",
-        f'{indent}[function description]', '\n',
-    ]
+    # TODO: Raise an error
+    if docstring_type not in DOCSTRING_TYPES:
+        print(f'ERROR: Could not find docstring type: {docstring_type}.')
+        exit(1)
 
-    for arg in fn_types.args:
-        # Only self is allowed to have no type annotation.
-        # Self is not documented, so it has to be skipped here.
-        if all(arg):
-            docstring.append(
-                f'{indent}:param {arg[0]}: [{arg[0]} description]',
-            )
-            docstring.append(f'{indent}:type {arg[0]}: {arg[1]}')
+    docstring = DOCSTRING_TYPES[docstring_type](fn_types, indent)
 
-    docstring.append('\n')
-    docstring.append(f'{indent}:returns: [return description]')
-    docstring.append(f'{indent}:rtype: {fn_types.returns}')
-
-    docstring.append(f"{indent}'''\n")
-
-    return '\n'.join(docstring)
+    return docstring
 
 
-def _rewrite_file(filename: str) -> int:
+def _rewrite_file(filename: str, docstring_type: str) -> int:
 
     with open(filename, encoding='UTF-8') as file:
         contents = file.read()
@@ -207,7 +193,11 @@ def _rewrite_file(filename: str) -> int:
                 k += 1
 
             indent = tokens[k].src
-            docstring = _generate_docstring(found[token.offset], indent=indent)
+            docstring = _generate_docstring(
+                docstring_type,
+                found[token.offset],
+                indent=indent,
+            )
             tokens[j] = tokens[j]._replace(src=f':{docstring}')
 
     new_contents = tokens_to_src(tokens)
@@ -221,11 +211,17 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
 
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='*')
+    # TODO: Add more detail to which types are available
+    parser.add_argument(
+        '--type',
+        default='rst',
+        help='Choose the type of docstring to generate',
+    )
     args = parser.parse_args(argv)
 
     ret = 0
 
     for filename in args.filenames:
-        ret |= _rewrite_file(filename)
+        ret |= _rewrite_file(filename, args.type)
 
     return ret
